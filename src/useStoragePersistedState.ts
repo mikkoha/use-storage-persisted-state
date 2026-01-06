@@ -1,4 +1,5 @@
-import { useCallback, useSyncExternalStore, useMemo, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
+import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { Codec, inferCodec } from "./codecs";
 import { localStorageSync, sessionStorageSync } from "./storage";
 
@@ -85,7 +86,6 @@ export function useStoragePersistedState<T>(
   // 2. Subscribe to the external store (Local/SessionStorage + Polling/Events)
   // useSyncExternalStore handles the hydration mismatch automatically by
   // taking a `getServerSnapshot` (returning defaultValue).
-  // TODO: Support also pre 18 React versions? (as defined in package.json peerDeps)
   const value = useSyncExternalStore(
     (callback) => syncManager.subscribe(key, callback),
     getSnapshot,
