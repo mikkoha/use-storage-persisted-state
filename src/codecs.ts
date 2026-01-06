@@ -10,24 +10,25 @@ export interface Codec<T> {
 /**
  * A robust JSON codec that handles parsing errors gracefully.
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const JsonCodec: Codec<any> = {
-  encode: (value) => JSON.stringify(value),
+  encode: (value) => {
+    if (value === null) return null;
+    return JSON.stringify(value);
+  },
   decode: (value) => {
     if (value === null) return null;
     try {
       return JSON.parse(value);
     } catch (e) {
-      console.warn(
-        `LocalStorage parse error for value "${value}". Falling back to null.`,
-        e
-      );
-      return null;
+      console.warn(`LocalStorage parse error for value "${value}".`, e);
+      throw e;
     }
   },
 };
 
 export const StringCodec: Codec<string | null> = {
-  encode: (value) => value ?? "",
+  encode: (value) => value ?? null,
   decode: (value) => value ?? null,
 };
 
@@ -52,8 +53,11 @@ export const NumberCodec: Codec<number | null> = {
 export function inferCodec<T>(defaultValue: T): Codec<T> {
   const type = typeof defaultValue;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (type === "boolean") return BooleanCodec as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (type === "number") return NumberCodec as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   if (type === "string") return StringCodec as any;
 
   // Default to JSON for objects, arrays, or undefined

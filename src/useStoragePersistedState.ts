@@ -68,11 +68,12 @@ export function useStoragePersistedState<T>(
   const getSnapshot = useCallback(() => {
     const raw = adapter.getItem(key);
 
+    // If raw value matches cache, return cached object.
+    if (raw === lastRaw.current && lastParsed.current !== undefined)
+      return lastParsed.current as T;
+
     // If key is missing, return default.
     if (raw === null) return defaultValue as T;
-
-    // If raw value matches cache, return cached object.
-    if (raw === lastRaw.current) return lastParsed.current as T;
 
     try {
       const decoded = codec.decode(raw);
@@ -112,9 +113,14 @@ export function useStoragePersistedState<T>(
             : newValueOrFn;
 
         if (newValue === undefined) {
+          lastRaw.current = null;
+          lastParsed.current = undefined;
           adapter.removeItem(key);
         } else {
           const encoded = codec.encode(newValue);
+          lastRaw.current = encoded;
+          lastParsed.current = newValue;
+
           if (encoded === null) {
             adapter.removeItem(key);
           } else {

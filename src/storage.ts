@@ -13,7 +13,7 @@ class StorageSyncManager {
 
   constructor(
     private storage: StorageAdapter,
-    private pollingIntervalMs = 2000
+    private pollingIntervalMs = 2000,
   ) {
     if (typeof window !== "undefined") {
       // 1. Cross-tab sync
