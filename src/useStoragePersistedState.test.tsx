@@ -24,7 +24,7 @@ describe("useStoragePersistedState", () => {
   describe("Basic functionality", () => {
     it("should initialize with default value when storage is empty", () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState("test-key", "default")
+        useStoragePersistedState("test-key", "default"),
       );
 
       expect(result.current[0]).toBe("default");
@@ -33,7 +33,7 @@ describe("useStoragePersistedState", () => {
 
     it("should persist value to storage when set", () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState("test-key", "default")
+        useStoragePersistedState("test-key", "default"),
       );
 
       act(() => {
@@ -47,7 +47,7 @@ describe("useStoragePersistedState", () => {
     it("should remove key from storage when set to undefined", () => {
       window.localStorage.setItem("test-key", "initial");
       const { result } = renderHook(() =>
-        useStoragePersistedState<string | undefined>("test-key", "initial")
+        useStoragePersistedState<string | undefined>("test-key", "initial"),
       );
 
       act(() => {
@@ -60,7 +60,7 @@ describe("useStoragePersistedState", () => {
     it("should remove key from storage when set to null", () => {
       window.localStorage.setItem("test-key", "initial");
       const { result } = renderHook(() =>
-        useStoragePersistedState<string | null>("test-key", "initial")
+        useStoragePersistedState<string | null>("test-key", "initial"),
       );
 
       act(() => {
@@ -74,7 +74,7 @@ describe("useStoragePersistedState", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("session-key", "start", {
           storageType: "sessionStorage",
-        })
+        }),
       );
 
       act(() => {
@@ -89,7 +89,7 @@ describe("useStoragePersistedState", () => {
   describe("Type serialization (codecs)", () => {
     it("should handle boolean false correctly", () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState("bool-key", true)
+        useStoragePersistedState("bool-key", true),
       );
 
       act(() => {
@@ -109,7 +109,7 @@ describe("useStoragePersistedState", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("bool-custom-key", true, {
           codec: CustomBoolCodec,
-        })
+        }),
       );
 
       act(() => {
@@ -119,28 +119,123 @@ describe("useStoragePersistedState", () => {
       expect(window.localStorage.getItem("bool-custom-key")).toBe("N");
       expect(result.current[0]).toBe(false);
     });
-    // TODO: Test with boolean true as well.
 
-    // TODO: Test with other number values, negative, floats, NaN, Infinity, -Infinity
-    it("should handle number zero correctly", () => {
+    it("should handle boolean true correctly", () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState("num-key", 10)
+        useStoragePersistedState("bool-true-key", false),
       );
 
       act(() => {
-        result.current[1](0);
+        result.current[1](true);
       });
 
-      expect(result.current[0]).toBe(0);
-      expect(window.localStorage.getItem("num-key")).toBe("0");
+      expect(result.current[0]).toBe(true);
+      expect(window.localStorage.getItem("bool-true-key")).toBe("true");
     });
 
-    // TODO: Test with strings: empty string, normal string, special chars, unicode, JSON strings (handled as strings, not objects)
+    const numberCases: Array<{
+      name: string;
+      value: number;
+      expected: string;
+      assert: (current: number) => void;
+    }> = [
+      {
+        name: "zero",
+        value: 0,
+        expected: "0",
+        assert: (current) => expect(current).toBe(0),
+      },
+      {
+        name: "negative integer",
+        value: -42,
+        expected: "-42",
+        assert: (current) => expect(current).toBe(-42),
+      },
+      {
+        name: "float",
+        value: 3.25,
+        expected: "3.25",
+        assert: (current) => expect(current).toBe(3.25),
+      },
+      {
+        name: "NaN",
+        value: Number.NaN,
+        expected: "NaN",
+        assert: (current) => expect(Number.isNaN(current)).toBe(true),
+      },
+      {
+        name: "Infinity",
+        value: Infinity,
+        expected: "Infinity",
+        assert: (current) => expect(current).toBe(Infinity),
+      },
+      {
+        name: "-Infinity",
+        value: -Infinity,
+        expected: "-Infinity",
+        assert: (current) => expect(current).toBe(-Infinity),
+      },
+    ];
+
+    for (const testCase of numberCases) {
+      it(`should handle number ${testCase.name} correctly`, () => {
+        const { result } = renderHook(() =>
+          useStoragePersistedState("num-key", 10),
+        );
+
+        act(() => {
+          result.current[1](testCase.value);
+        });
+
+        expect(window.localStorage.getItem("num-key")).toBe(testCase.expected);
+        testCase.assert(result.current[0]);
+      });
+    }
+
+    const stringCases: Array<{
+      name: string;
+      value: string;
+      expected: string;
+    }> = [
+      { name: "empty string", value: "", expected: "" },
+      { name: "normal string", value: "hello world", expected: "hello world" },
+      {
+        name: "special chars",
+        value: "!@#$%^&*()_+-=[]{}|;:'\",.<>/?`~",
+        expected: "!@#$%^&*()_+-=[]{}|;:'\",.<>/?`~",
+      },
+      {
+        name: "unicode",
+        value: "Iñtërnâtiônàlizætiøn こんにちは",
+        expected: "Iñtërnâtiônàlizætiøn こんにちは",
+      },
+      {
+        name: "json string",
+        value: '{"foo":"bar","count":1}',
+        expected: '{"foo":"bar","count":1}',
+      },
+    ];
+
+    for (const testCase of stringCases) {
+      it(`should handle ${testCase.name} correctly`, () => {
+        const { result } = renderHook(() =>
+          useStoragePersistedState("str-key", "default"),
+        );
+
+        act(() => {
+          result.current[1](testCase.value);
+        });
+
+        expect(window.localStorage.getItem("str-key")).toBe(testCase.expected);
+        expect(result.current[0]).toBe(testCase.value);
+        expect(typeof result.current[0]).toBe("string");
+      });
+    }
 
     it("should serialize complex objects", () => {
       const defaultValue = { foo: "bar" };
       const { result } = renderHook(() =>
-        useStoragePersistedState("obj-key", defaultValue)
+        useStoragePersistedState("obj-key", defaultValue),
       );
 
       const newValue = { foo: "baz", val: 123 };
@@ -150,14 +245,39 @@ describe("useStoragePersistedState", () => {
 
       expect(result.current[0]).toEqual(newValue);
       expect(window.localStorage.getItem("obj-key")).toBe(
-        JSON.stringify(newValue)
+        JSON.stringify(newValue),
       );
     });
 
-    // TODO: Test with nested objects and arrays as well.
+    it("should serialize nested objects and arrays", () => {
+      const defaultValue = {
+        id: 1,
+        tags: ["alpha", "beta"],
+        meta: { flags: { active: true }, counts: [1, 2, 3] },
+      };
+      const { result } = renderHook(() =>
+        useStoragePersistedState("obj-nested-key", defaultValue),
+      );
+
+      const newValue = {
+        id: 2,
+        tags: ["gamma", "delta", "epsilon"],
+        meta: { flags: { active: false }, counts: [3, 2, 1] },
+      };
+
+      act(() => {
+        result.current[1](newValue);
+      });
+
+      expect(result.current[0]).toEqual(newValue);
+      expect(window.localStorage.getItem("obj-nested-key")).toBe(
+        JSON.stringify(newValue),
+      );
+    });
+
     it("should not persist explicit null values with JSON codec", () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState<object | null>("null-key-default", { a: 1 })
+        useStoragePersistedState<object | null>("null-key-default", { a: 1 }),
       );
 
       act(() => {
@@ -172,7 +292,7 @@ describe("useStoragePersistedState", () => {
   describe("Synchronization", () => {
     it("should update when storage event fires", async () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState("sync-key", "initial")
+        useStoragePersistedState("sync-key", "initial"),
       );
 
       act(() => {
@@ -183,7 +303,7 @@ describe("useStoragePersistedState", () => {
             key: "sync-key",
             newValue: "updated-external",
             storageArea: window.localStorage,
-          })
+          }),
         );
       });
 
@@ -192,10 +312,10 @@ describe("useStoragePersistedState", () => {
 
     it("should sync between two hooks in same tab", () => {
       const { result: hook1 } = renderHook(() =>
-        useStoragePersistedState("shared-key", "initial")
+        useStoragePersistedState("shared-key", "initial"),
       );
       const { result: hook2 } = renderHook(() =>
-        useStoragePersistedState("shared-key", "initial")
+        useStoragePersistedState("shared-key", "initial"),
       );
 
       act(() => {
@@ -208,7 +328,7 @@ describe("useStoragePersistedState", () => {
 
     it("should increment with a set function", () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState("counter-key", 0)
+        useStoragePersistedState("counter-key", 0),
       );
 
       act(() => {
@@ -221,10 +341,10 @@ describe("useStoragePersistedState", () => {
 
     it("should handle concurrent increments from two hooks", () => {
       const { result: hook1 } = renderHook(() =>
-        useStoragePersistedState("concurrent-key", 0)
+        useStoragePersistedState("concurrent-key", 0),
       );
       const { result: hook2 } = renderHook(() =>
-        useStoragePersistedState("concurrent-key", 0)
+        useStoragePersistedState("concurrent-key", 0),
       );
 
       act(() => {
@@ -241,7 +361,7 @@ describe("useStoragePersistedState", () => {
       vi.useFakeTimers();
 
       const { result } = renderHook(() =>
-        useStoragePersistedState("polling-key", "initial")
+        useStoragePersistedState("polling-key", "initial"),
       );
 
       // Bypass hook, bypass other-tab-event. Just set item.
@@ -263,7 +383,7 @@ describe("useStoragePersistedState", () => {
       window.localStorage.setItem("bad-json", "INVALID_JSON{");
 
       const { result } = renderHook(() =>
-        useStoragePersistedState("bad-json", { foo: "default" })
+        useStoragePersistedState("bad-json", { foo: "default" }),
       );
 
       expect(result.current[0]).toEqual({ foo: "default" });
@@ -276,8 +396,8 @@ describe("useStoragePersistedState", () => {
 
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining(
-          "uses undefined or null default without explicit Codec"
-        )
+          "uses undefined or null default without explicit Codec",
+        ),
       );
     });
 
@@ -286,8 +406,8 @@ describe("useStoragePersistedState", () => {
 
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining(
-          "uses undefined or null default without explicit Codec"
-        )
+          "uses undefined or null default without explicit Codec",
+        ),
       );
     });
   });

@@ -20,21 +20,21 @@ interface Options<T> {
 export function useStoragePersistedState<T>(
   key: string,
   defaultValue: T,
-  options?: Options<T>
+  options?: Options<T>,
 ): [T, (newValue: T | ((prev: T) => T)) => void];
 
 // Overload 2: Explicit Codec provided, defaultValue can be null or undefined
 export function useStoragePersistedState<T>(
   key: string,
   defaultValue: null | undefined,
-  options: Options<T> & { codec: Codec<T> }
+  options: Options<T> & { codec: Codec<T> },
 ): [T | null, (newValue: T | ((prev: T) => T)) => void];
 
 // Implementation
 export function useStoragePersistedState<T>(
   key: string,
   defaultValue: T,
-  options: Options<T> = {}
+  options: Options<T> = {},
 ) {
   // TODO: Access this from the sync manager directly?
   const adapter =
@@ -56,7 +56,7 @@ export function useStoragePersistedState<T>(
 
   if ((defaultValue === undefined || defaultValue === null) && !options.codec) {
     console.warn(
-      `useStorage: Key "${key}" uses undefined or null default without explicit Codec. defaulting to JSON.`
+      `useStorage: Key "${key}" uses undefined or null default without explicit Codec. defaulting to JSON.`,
     );
   }
 
@@ -94,7 +94,7 @@ export function useStoragePersistedState<T>(
   const value = useSyncExternalStore(
     (callback) => syncManager.subscribe(key, callback),
     getSnapshot,
-    () => defaultValue as T // Server Snapshot
+    () => defaultValue as T, // Server Snapshot
   );
 
   // 3. Create the Setter
@@ -134,7 +134,7 @@ export function useStoragePersistedState<T>(
         console.error(`Error setting localStorage key "${key}":`, error);
       }
     },
-    [adapter, key, codec, defaultValue, syncManager]
+    [adapter, key, codec, defaultValue, syncManager],
   );
 
   return [value, setValue] as const;
