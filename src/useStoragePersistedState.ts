@@ -16,10 +16,9 @@ interface Options<T> {
 }
 
 // Overload 1: Default provided, T inferred
-// TODO: T can not include null or undefined here?
 export function useStoragePersistedState<T>(
   key: string,
-  defaultValue: T,
+  defaultValue: Exclude<T, null | undefined>,
   options?: Options<T>,
 ): [T, (newValue: T | ((prev: T) => T)) => void];
 
@@ -36,15 +35,11 @@ export function useStoragePersistedState<T>(
   defaultValue: T,
   options: Options<T> = {},
 ) {
-  // TODO: Access this from the sync manager directly?
-  const adapter =
-    options.storageType === "sessionStorage"
-      ? window.sessionStorage
-      : window.localStorage;
   const syncManager =
     options.storageType === "sessionStorage"
       ? sessionStorageSync
       : localStorageSync;
+  const adapter = syncManager.storage;
 
   // 1. Determine the codec.
   // If no explicit codec is passed, we try to infer it from defaultValue.

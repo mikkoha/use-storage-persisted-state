@@ -12,7 +12,7 @@ class StorageSyncManager {
   private listeners = new Map<string, Set<() => void>>();
 
   constructor(
-    private storage: StorageAdapter,
+    public readonly storage: StorageAdapter,
     private pollingIntervalMs = 2000,
   ) {
     if (typeof window !== "undefined") {

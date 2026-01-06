@@ -392,6 +392,7 @@ describe("useStoragePersistedState", () => {
     });
 
     it("should require codec if default is undefined", () => {
+      // @ts-expect-error - Testing runtime warning for invalid usage
       renderHook(() => useStoragePersistedState("undefined-key", undefined));
 
       expect(console.warn).toHaveBeenCalledWith(
@@ -402,6 +403,7 @@ describe("useStoragePersistedState", () => {
     });
 
     it("should require codec if default is null", () => {
+      // @ts-expect-error - Testing runtime warning for invalid usage
       renderHook(() => useStoragePersistedState("undefined-key", null));
 
       expect(console.warn).toHaveBeenCalledWith(
