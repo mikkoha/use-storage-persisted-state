@@ -62,6 +62,7 @@ export function useStoragePersistedState<T>(
   // 2. Subscribe to the external store (Local/SessionStorage + Polling/Events)
   // useSyncExternalStore handles the hydration mismatch automatically by
   // taking a `getServerSnapshot` (returning defaultValue).
+  // TODO: Support also pre 18 React versions? (as defined in package.json peerDeps)
   const value = useSyncExternalStore(
     (callback) => syncManager.subscribe(key, callback),
     () => {
@@ -86,7 +87,7 @@ export function useStoragePersistedState<T>(
 
         const newValue =
           newValueOrFn instanceof Function
-            ? (newValueOrFn as Function)(current)
+            ? newValueOrFn(current)
             : newValueOrFn;
 
         if (newValue === undefined) {
@@ -106,7 +107,7 @@ export function useStoragePersistedState<T>(
         console.error(`Error setting localStorage key "${key}":`, error);
       }
     },
-    [key, codec, defaultValue]
+    [adapter, key, codec, defaultValue, syncManager]
   );
 
   return [value, setValue] as const;
