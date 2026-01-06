@@ -17,13 +17,14 @@ class StorageSyncManager {
   ) {
     if (typeof window !== "undefined") {
       // 1. Cross-tab sync
+      // TODO: Where/when do we remove this listener? Should we? Comment if not needed.
       window.addEventListener("storage", (e) => {
         if (e.key && this.listeners.has(e.key)) {
           this.notify(e.key);
         }
       });
-      // 2. Start polling for DevTools changes (Robustness)
-      this.startPolling();
+      // 2. Start polling for DevTools or direct window.localStorage changes (robustness)
+      // We only poll if there are listeners. Lazy start in subscribe.
     }
   }
 
@@ -55,7 +56,7 @@ class StorageSyncManager {
   private snapshotCache = new Map<string, string | null>();
 
   private startPolling() {
-    if (this.pollingIntervalId) return;
+    if (this.pollingIntervalId || typeof window === "undefined") return;
 
     this.pollingIntervalId = window.setInterval(() => {
       this.listeners.forEach((_, key) => {

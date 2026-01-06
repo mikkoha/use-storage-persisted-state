@@ -12,7 +12,6 @@ describe("useStoragePersistedState", () => {
     window.sessionStorage.clear();
     console.error = vi.fn();
     console.warn = vi.fn();
-    vi.useFakeTimers();
   });
 
   afterEach(() => {
@@ -22,10 +21,8 @@ describe("useStoragePersistedState", () => {
     vi.restoreAllMocks();
   });
 
-  // TODO: Use sentence case for describe/it names. (Now using title case and underscores)
-  describe("Basic Functionality", () => {
-    // TODO: By default, should not insert the default value into storage if the value has just been read from the hook (if set is not explicitly called). This behavior should be configurable with hook options (TODO: add the option and implement it).
-    it("should_initialize_with_default_value_when_storage_is_empty", () => {
+  describe("Basic functionality", () => {
+    it("should initialize with default value when storage is empty", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("test-key", "default")
       );
@@ -34,7 +31,7 @@ describe("useStoragePersistedState", () => {
       expect(window.localStorage.getItem("test-key")).toBeNull();
     });
 
-    it("should_persist_value_to_storage_when_set", () => {
+    it("should persist value to storage when set", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("test-key", "default")
       );
@@ -47,10 +44,7 @@ describe("useStoragePersistedState", () => {
       expect(window.localStorage.getItem("test-key")).toBe("new-value");
     });
 
-    // TODO: This should be configurable behavior. Sometimes we want to store undefined as an explicit value. Default: remove the key from storage if set to undefined. Our explicit value for undefined is "undefined" (string). Make sure our serialize and deserialize handle this correctly.
-    // TODO: Also similar for null. By default, setting to null should remove the key from storage. Configurable behavior. The hook always returns undefined if the key is not present in storage, because wen can't distinguish with what value the user removed the key (undefined or null). For the explicitly stored null values, a null should be returned from the hook. Null is serialized to "null" (string) in storage. If explicit null or undefined is configured to be stored, we should make sure there is a jsdoc comment with a warning that, e.g., serialized null values and "null" strings can not be distinguished and both will be interpreted as null, if explicit null is configured to be in use.
-    // TODO: We should confirm that the hook is typed so that the return value can be undefined, unless the T is defined so that it cannot be undefined and a default value is provided. If default value is not given, the return type should always include undefined.
-    it("should_remove_key_from_storage_when_set_to_undefined", () => {
+    it("should remove key from storage when set to undefined", () => {
       window.localStorage.setItem("test-key", "initial");
       const { result } = renderHook(() =>
         useStoragePersistedState<string | undefined>("test-key", "initial")
@@ -60,11 +54,23 @@ describe("useStoragePersistedState", () => {
         result.current[1](undefined);
       });
 
-      // Based on implementation: if (newValue === undefined) adapter.removeItem(key)
       expect(window.localStorage.getItem("test-key")).toBeNull();
     });
 
-    it("should_use_session_storage_when_configured", () => {
+    it("should remove key from storage when set to null", () => {
+      window.localStorage.setItem("test-key", "initial");
+      const { result } = renderHook(() =>
+        useStoragePersistedState<string | null>("test-key", "initial")
+      );
+
+      act(() => {
+        result.current[1](null);
+      });
+
+      expect(window.localStorage.getItem("test-key")).toBeNull();
+    });
+
+    it("should use session storage when configured", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("session-key", "start", {
           storageType: "sessionStorage",
@@ -80,9 +86,8 @@ describe("useStoragePersistedState", () => {
     });
   });
 
-  describe("Type Serialization (Codecs)", () => {
-    // TODO: Accepted boolean false and true values should be configurable. By default only "true" and "false" strings are accepted, but through hook options, it should be possible to pass arrays of accepted true/false values.
-    it("should_handle_boolean_false_correctly", () => {
+  describe("Type serialization (codecs)", () => {
+    it("should handle boolean false correctly", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("bool-key", true)
       );
@@ -94,10 +99,30 @@ describe("useStoragePersistedState", () => {
       expect(result.current[0]).toBe(false);
       expect(window.localStorage.getItem("bool-key")).toBe("false");
     });
+
+    it("should allow configuring custom boolean strings/values with a custom codec", () => {
+      const CustomBoolCodec = {
+        encode: (val: boolean) => (val ? "Y" : "N"),
+        decode: (val: string | null) => val === "Y",
+      };
+
+      const { result } = renderHook(() =>
+        useStoragePersistedState("bool-custom-key", true, {
+          codec: CustomBoolCodec,
+        })
+      );
+
+      act(() => {
+        result.current[1](false);
+      });
+
+      expect(window.localStorage.getItem("bool-custom-key")).toBe("N");
+      expect(result.current[0]).toBe(false);
+    });
     // TODO: Test with boolean true as well.
 
     // TODO: Test with other number values, negative, floats, NaN, Infinity, -Infinity
-    it("should_handle_number_zero_correctly", () => {
+    it("should handle number zero correctly", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("num-key", 10)
       );
@@ -110,7 +135,9 @@ describe("useStoragePersistedState", () => {
       expect(window.localStorage.getItem("num-key")).toBe("0");
     });
 
-    it("should_serialize_complex_objects", () => {
+    // TODO: Test with strings: empty string, normal string, special chars, unicode, JSON strings (handled as strings, not objects)
+
+    it("should serialize complex objects", () => {
       const defaultValue = { foo: "bar" };
       const { result } = renderHook(() =>
         useStoragePersistedState("obj-key", defaultValue)
@@ -128,16 +155,9 @@ describe("useStoragePersistedState", () => {
     });
 
     // TODO: Test with nested objects and arrays as well.
-    // TODO: Test with strings, empty strings, special characters, emojis, numbers and booleans as strings, and strings that look like JSON.
-
-    it("should_handle_explicit_null_values", () => {
-      // Testing explicit codec behavior if standard JSON codec supports null
-      // By default JsonCodec: decode(null) -> undefined.
-      // But if we store `null` as a value, it gets stringified to "null".
-      // Let's verify we can store null if the type allows it.
-
+    it("should not persist explicit null values with JSON codec", () => {
       const { result } = renderHook(() =>
-        useStoragePersistedState<object | null>("null-key", { init: true })
+        useStoragePersistedState<object | null>("null-key-default", { a: 1 })
       );
 
       act(() => {
@@ -145,12 +165,12 @@ describe("useStoragePersistedState", () => {
       });
 
       expect(result.current[0]).toBeNull();
-      expect(window.localStorage.getItem("null-key")).toBe("null");
+      expect(window.localStorage.getItem("null-key-default")).toBeNull();
     });
   });
 
   describe("Synchronization", () => {
-    it("should_update_when_storage_event_fires", async () => {
+    it("should update when storage event fires", async () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("sync-key", "initial")
       );
@@ -167,12 +187,10 @@ describe("useStoragePersistedState", () => {
         );
       });
 
-      await waitFor(() => {
-        expect(result.current[0]).toBe("updated-external");
-      });
+      expect(result.current[0]).toBe("updated-external");
     });
 
-    it("should_sync_between_two_hooks_in_same_tab", () => {
+    it("should sync between two hooks in same tab", () => {
       const { result: hook1 } = renderHook(() =>
         useStoragePersistedState("shared-key", "initial")
       );
@@ -185,16 +203,48 @@ describe("useStoragePersistedState", () => {
       });
 
       expect(hook2.current[0]).toBe("changed-by-1");
+      expect(hook1.current[0]).toBe("changed-by-1");
     });
 
-    // TODO: Test that incrementing with a set function works. E.g., setValue(prev => prev + 1). Test this with two hooks incrementing the same key.
+    it("should increment with a set function", () => {
+      const { result } = renderHook(() =>
+        useStoragePersistedState("counter-key", 0)
+      );
 
-    it("should_detect_external_changes_via_polling", async () => {
+      act(() => {
+        result.current[1]((prev) => prev + 1);
+      });
+
+      expect(result.current[0]).toBe(1);
+      expect(window.localStorage.getItem("counter-key")).toBe("1");
+    });
+
+    it("should handle concurrent increments from two hooks", () => {
+      const { result: hook1 } = renderHook(() =>
+        useStoragePersistedState("concurrent-key", 0)
+      );
+      const { result: hook2 } = renderHook(() =>
+        useStoragePersistedState("concurrent-key", 0)
+      );
+
+      act(() => {
+        hook1.current[1]((prev) => prev + 1);
+        hook2.current[1]((prev) => prev + 1);
+      });
+
+      expect(hook1.current[0]).toBe(2);
+      expect(hook2.current[0]).toBe(2);
+    });
+
+    it("should detect external changes via polling", async () => {
+      // Use fake timers to control polling
+      vi.useFakeTimers();
+
       const { result } = renderHook(() =>
         useStoragePersistedState("polling-key", "initial")
       );
 
-      // Bypass hook, bypass event. Just set item.
+      // Bypass hook, bypass other-tab-event. Just set item.
       window.localStorage.setItem("polling-key", "silent-change");
 
       // Advance timers by polling interval (2000ms default)
@@ -202,15 +252,14 @@ describe("useStoragePersistedState", () => {
         vi.advanceTimersByTime(2500);
       });
 
-      await waitFor(() => {
-        expect(result.current[0]).toBe("silent-change");
-      });
+      expect(result.current[0]).toBe("silent-change");
+
+      vi.useRealTimers();
     });
   });
 
-  describe("Edge Cases & Errors", () => {
-    // TODO: It should be configurable if the key should be removed from storage on JSON parse error or if the bad value should be retained. By default, the key should be kept until explicit write or removal.
-    it("should_return_default_value_on_json_parse_error", () => {
+  describe("Edge cases & errors", () => {
+    it("should return default value on json parse error but keep storage intact", () => {
       window.localStorage.setItem("bad-json", "INVALID_JSON{");
 
       const { result } = renderHook(() =>
@@ -219,38 +268,27 @@ describe("useStoragePersistedState", () => {
 
       expect(result.current[0]).toEqual({ foo: "default" });
       expect(console.warn).toHaveBeenCalled(); // JsonCodec logs warning
+      expect(window.localStorage.getItem("bad-json")).toBe("INVALID_JSON{");
     });
 
-    it("should_require_codec_if_default_is_undefined", () => {
+    it("should require codec if default is undefined", () => {
       renderHook(() => useStoragePersistedState("undefined-key", undefined));
 
       expect(console.warn).toHaveBeenCalledWith(
-        expect.stringContaining("uses undefined default without explicit Codec")
+        expect.stringContaining(
+          "uses undefined or null default without explicit Codec"
+        )
       );
     });
 
-    // SSR Hydration is tricky to test in JSDOM as it is a client-side env.
-    // However, we can assert that the initial value returned matches the server
-    // snapshot logic in useSyncExternalStore. The third arg to useSyncExternalStore
-    // is getServerSnapshot.
-    it("should_handle_ssr_hydration_correctly", () => {
-      // To properly test this, we'd need to mock 'window' being undefined momentarily
-      // OR check that the getServerSnapshot function returns the default value.
-      // But useSyncExternalStore is opaque.
+    it("should require codec if default is null", () => {
+      renderHook(() => useStoragePersistedState("undefined-key", null));
 
-      // A simple check is to verify that if window.localStorage HAS value,
-      // but we are in a "server" context (simulated), it might behave differently?
-      // Actually, standard JSDOM test mimics the client.
-
-      // Let's assume the user wants to ensure that *before* effects run, it uses default.
-      // But in renderHook, we see the result after mount.
-
-      const { result } = renderHook(() =>
-        useStoragePersistedState("ssr-key", "default-val")
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining(
+          "uses undefined or null default without explicit Codec"
+        )
       );
-
-      // It should simply work.
-      expect(result.current[0]).toBe("default-val");
     });
   });
 });

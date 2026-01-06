@@ -13,21 +13,22 @@ export interface Codec<T> {
 export const JsonCodec: Codec<any> = {
   encode: (value) => JSON.stringify(value),
   decode: (value) => {
-    if (value === null) return undefined;
+    if (value === null) return null;
     try {
       return JSON.parse(value);
     } catch (e) {
       console.warn(
-        `LocalStorage parse error for value "${value}". Falling back to undefined.`
+        `LocalStorage parse error for value "${value}". Falling back to null.`,
+        e
       );
-      return undefined;
+      return null;
     }
   },
 };
 
-export const StringCodec: Codec<string | undefined> = {
+export const StringCodec: Codec<string | null> = {
   encode: (value) => value ?? "",
-  decode: (value) => value ?? undefined, // 'null' means key didn't exist
+  decode: (value) => value ?? null,
 };
 
 export const BooleanCodec: Codec<boolean> = {
@@ -35,12 +36,12 @@ export const BooleanCodec: Codec<boolean> = {
   decode: (value) => value === "true",
 };
 
-export const NumberCodec: Codec<number | undefined> = {
+export const NumberCodec: Codec<number | null> = {
   encode: (value) => String(value),
   decode: (value) => {
-    if (value === null || value === "") return undefined;
+    if (value === null || value === "") return null;
     const parsed = Number(value);
-    return isNaN(parsed) ? undefined : parsed;
+    return isNaN(parsed) ? null : parsed;
   },
 };
 
