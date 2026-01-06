@@ -22,7 +22,9 @@ describe("useStoragePersistedState", () => {
     vi.restoreAllMocks();
   });
 
+  // TODO: Use sentence case for describe/it names. (Now using title case and underscores)
   describe("Basic Functionality", () => {
+    // TODO: By default, should not insert the default value into storage if the value has just been read from the hook (if set is not explicitly called). This behavior should be configurable with hook options (TODO: add the option and implement it).
     it("should_initialize_with_default_value_when_storage_is_empty", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("test-key", "default")
@@ -45,6 +47,9 @@ describe("useStoragePersistedState", () => {
       expect(window.localStorage.getItem("test-key")).toBe("new-value");
     });
 
+    // TODO: This should be configurable behavior. Sometimes we want to store undefined as an explicit value. Default: remove the key from storage if set to undefined. Our explicit value for undefined is "undefined" (string). Make sure our serialize and deserialize handle this correctly.
+    // TODO: Also similar for null. By default, setting to null should remove the key from storage. Configurable behavior. The hook always returns undefined if the key is not present in storage, because wen can't distinguish with what value the user removed the key (undefined or null). For the explicitly stored null values, a null should be returned from the hook. Null is serialized to "null" (string) in storage. If explicit null or undefined is configured to be stored, we should make sure there is a jsdoc comment with a warning that, e.g., serialized null values and "null" strings can not be distinguished and both will be interpreted as null, if explicit null is configured to be in use.
+    // TODO: We should confirm that the hook is typed so that the return value can be undefined, unless the T is defined so that it cannot be undefined and a default value is provided. If default value is not given, the return type should always include undefined.
     it("should_remove_key_from_storage_when_set_to_undefined", () => {
       window.localStorage.setItem("test-key", "initial");
       const { result } = renderHook(() =>
@@ -52,7 +57,6 @@ describe("useStoragePersistedState", () => {
       );
 
       act(() => {
-        // @ts-ignore - explicitly setting undefined to trigger removal
         result.current[1](undefined);
       });
 
@@ -77,6 +81,7 @@ describe("useStoragePersistedState", () => {
   });
 
   describe("Type Serialization (Codecs)", () => {
+    // TODO: Accepted boolean false and true values should be configurable. By default only "true" and "false" strings are accepted, but through hook options, it should be possible to pass arrays of accepted true/false values.
     it("should_handle_boolean_false_correctly", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("bool-key", true)
@@ -89,7 +94,9 @@ describe("useStoragePersistedState", () => {
       expect(result.current[0]).toBe(false);
       expect(window.localStorage.getItem("bool-key")).toBe("false");
     });
+    // TODO: Test with boolean true as well.
 
+    // TODO: Test with other number values, negative, floats, NaN, Infinity, -Infinity
     it("should_handle_number_zero_correctly", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("num-key", 10)
@@ -119,6 +126,9 @@ describe("useStoragePersistedState", () => {
         JSON.stringify(newValue)
       );
     });
+
+    // TODO: Test with nested objects and arrays as well.
+    // TODO: Test with strings, empty strings, special characters, emojis, numbers and booleans as strings, and strings that look like JSON.
 
     it("should_handle_explicit_null_values", () => {
       // Testing explicit codec behavior if standard JSON codec supports null
@@ -177,6 +187,8 @@ describe("useStoragePersistedState", () => {
       expect(hook2.current[0]).toBe("changed-by-1");
     });
 
+    // TODO: Test that incrementing with a set function works. E.g., setValue(prev => prev + 1). Test this with two hooks incrementing the same key.
+
     it("should_detect_external_changes_via_polling", async () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("polling-key", "initial")
@@ -197,6 +209,7 @@ describe("useStoragePersistedState", () => {
   });
 
   describe("Edge Cases & Errors", () => {
+    // TODO: It should be configurable if the key should be removed from storage on JSON parse error or if the bad value should be retained. By default, the key should be kept until explicit write or removal.
     it("should_return_default_value_on_json_parse_error", () => {
       window.localStorage.setItem("bad-json", "INVALID_JSON{");
 
@@ -209,10 +222,7 @@ describe("useStoragePersistedState", () => {
     });
 
     it("should_require_codec_if_default_is_undefined", () => {
-      renderHook(() =>
-        // @ts-ignore - Purposefully omitting codec to test runtime warning
-        useStoragePersistedState("undefined-key", undefined)
-      );
+      renderHook(() => useStoragePersistedState("undefined-key", undefined));
 
       expect(console.warn).toHaveBeenCalledWith(
         expect.stringContaining("uses undefined default without explicit Codec")
