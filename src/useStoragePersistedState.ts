@@ -157,7 +157,7 @@ export function useStoragePersistedState<T>(
         // Notify other hooks/tabs
         syncManager.notify(key);
       } catch (error) {
-        console.error(`Error setting localStorage key "${key}":`, error);
+        console.error(`Error setting storage key "${key}":`, error);
       }
     },
     [adapter, key, codec, defaultValue, syncManager],
@@ -170,7 +170,7 @@ export function useStoragePersistedState<T>(
       adapter.removeItem(key);
       syncManager.notify(key);
     } catch (error) {
-      console.error(`Error removing localStorage key "${key}":`, error);
+      console.error(`Error removing storage key "${key}":`, error);
     }
   }, [adapter, key, syncManager]);
 

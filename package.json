@@ -1,13 +1,41 @@
 {
   "name": "use-storage-persisted-state",
   "version": "1.0.0",
-  "description": "",
+  "description": "A robust, type-safe React hook for persisting state in localStorage/sessionStorage with cross-tab sync",
   "license": "MIT",
   "author": "",
+  "keywords": [
+    "react",
+    "hooks",
+    "localStorage",
+    "sessionStorage",
+    "state",
+    "persist",
+    "sync",
+    "cross-tab",
+    "storage",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "bugs": {
+    "url": ""
+  },
+  "homepage": "",
   "type": "commonjs",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
   "files": [
     "dist"
   ],

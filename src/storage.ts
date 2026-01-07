@@ -222,17 +222,103 @@ class StorageSyncManager {
   }
 }
 
+// Lazy-initialized singletons to avoid SSR crashes (window is not defined on server)
 const localStorageFallback = new MemoryStorageAdapter();
 const sessionStorageFallback = new MemoryStorageAdapter();
 
-export const localStorageSync = new StorageSyncManager(
-  new FallbackStorageAdapter(window.localStorage, localStorageFallback),
-);
-export const sessionStorageSync = new StorageSyncManager(
-  new FallbackStorageAdapter(window.sessionStorage, sessionStorageFallback),
-);
-export const memoryStorageSync = new StorageSyncManager(
-  new MemoryStorageAdapter(),
-  2000,
-  { enableCrossTabSync: false, enablePolling: false },
-);
+let _localStorageSync: StorageSyncManager | null = null;
+let _sessionStorageSync: StorageSyncManager | null = null;
+let _memoryStorageSync: StorageSyncManager | null = null;
+
+function getLocalStorageSync(): StorageSyncManager {
+  if (!_localStorageSync) {
+    if (typeof window !== "undefined") {
+      _localStorageSync = new StorageSyncManager(
+        new FallbackStorageAdapter(window.localStorage, localStorageFallback),
+      );
+    } else {
+      // SSR fallback - use memory storage
+      return getMemoryStorageSync();
+    }
+  }
+  return _localStorageSync;
+}
+
+function getSessionStorageSync(): StorageSyncManager {
+  if (!_sessionStorageSync) {
+    if (typeof window !== "undefined") {
+      _sessionStorageSync = new StorageSyncManager(
+        new FallbackStorageAdapter(
+          window.sessionStorage,
+          sessionStorageFallback,
+        ),
+      );
+    } else {
+      // SSR fallback - use memory storage
+      return getMemoryStorageSync();
+    }
+  }
+  return _sessionStorageSync;
+}
+
+function getMemoryStorageSync(): StorageSyncManager {
+  if (!_memoryStorageSync) {
+    _memoryStorageSync = new StorageSyncManager(
+      new MemoryStorageAdapter(),
+      2000,
+      {
+        enableCrossTabSync: false,
+        enablePolling: false,
+      },
+    );
+  }
+  return _memoryStorageSync;
+}
+
+/**
+ * Proxy object for localStorage sync manager with lazy initialization.
+ * Safe to import in SSR environments.
+ */
+export const localStorageSync = {
+  get storage() {
+    return getLocalStorageSync().storage;
+  },
+  subscribe(key: string, callback: () => void, options?: SubscribeOptions) {
+    return getLocalStorageSync().subscribe(key, callback, options);
+  },
+  notify(key: string) {
+    return getLocalStorageSync().notify(key);
+  },
+};
+
+/**
+ * Proxy object for sessionStorage sync manager with lazy initialization.
+ * Safe to import in SSR environments.
+ */
+export const sessionStorageSync = {
+  get storage() {
+    return getSessionStorageSync().storage;
+  },
+  subscribe(key: string, callback: () => void, options?: SubscribeOptions) {
+    return getSessionStorageSync().subscribe(key, callback, options);
+  },
+  notify(key: string) {
+    return getSessionStorageSync().notify(key);
+  },
+};
+
+/**
+ * Proxy object for memory storage sync manager with lazy initialization.
+ * Safe to import in SSR environments.
+ */
+export const memoryStorageSync = {
+  get storage() {
+    return getMemoryStorageSync().storage;
+  },
+  subscribe(key: string, callback: () => void, options?: SubscribeOptions) {
+    return getMemoryStorageSync().subscribe(key, callback, options);
+  },
+  notify(key: string) {
+    return getMemoryStorageSync().notify(key);
+  },
+};

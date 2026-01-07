@@ -2,7 +2,7 @@
 
 A robust, type-safe React hook for persisting state backed by `localStorage`, `sessionStorage`, or memory.
 
-`useStoragePersistedState` works like `useState`, but it automatically persists your state to the browser and keeps it synchronized across all components, tabs, and even direct localStorage changed, or manual changes in DevTools.
+`useStoragePersistedState` works like `useState`, but it automatically persists your state to the browser and keeps it synchronized across all components, tabs, and even direct localStorage changes, or manual changes in DevTools.
 
 ## Features (Why another storage hook?)
 
