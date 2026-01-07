@@ -70,6 +70,22 @@ describe("useStoragePersistedState", () => {
       expect(window.localStorage.getItem("test-key")).toBeNull();
     });
 
+    it("should remove key from storage when remove is called", () => {
+      window.localStorage.setItem("remove-key", "stored");
+      const { result } = renderHook(() =>
+        useStoragePersistedState("remove-key", "default"),
+      );
+
+      expect(result.current[0]).toBe("stored");
+
+      act(() => {
+        result.current[2]();
+      });
+
+      expect(result.current[0]).toBe("default");
+      expect(window.localStorage.getItem("remove-key")).toBeNull();
+    });
+
     it("should use session storage when configured", () => {
       const { result } = renderHook(() =>
         useStoragePersistedState("session-key", "start", {
@@ -87,17 +103,32 @@ describe("useStoragePersistedState", () => {
   });
 
   describe("Type serialization (codecs)", () => {
-    it("should handle boolean false correctly", () => {
-      const { result } = renderHook(() =>
-        useStoragePersistedState("bool-key", true),
-      );
+    describe("BooleanCodec", () => {
+      it("should handle boolean false correctly", () => {
+        const { result } = renderHook(() =>
+          useStoragePersistedState("bool-key", true),
+        );
 
-      act(() => {
-        result.current[1](false);
+        act(() => {
+          result.current[1](false);
+        });
+
+        expect(result.current[0]).toBe(false);
+        expect(window.localStorage.getItem("bool-key")).toBe("false");
       });
 
-      expect(result.current[0]).toBe(false);
-      expect(window.localStorage.getItem("bool-key")).toBe("false");
+      it("should handle boolean true correctly", () => {
+        const { result } = renderHook(() =>
+          useStoragePersistedState("bool-true-key", false),
+        );
+
+        act(() => {
+          result.current[1](true);
+        });
+
+        expect(result.current[0]).toBe(true);
+        expect(window.localStorage.getItem("bool-true-key")).toBe("true");
+      });
     });
 
     it("should allow configuring custom boolean strings/values with a custom codec", () => {
@@ -120,172 +151,213 @@ describe("useStoragePersistedState", () => {
       expect(result.current[0]).toBe(false);
     });
 
-    it("should handle boolean true correctly", () => {
-      const { result } = renderHook(() =>
-        useStoragePersistedState("bool-true-key", false),
-      );
+    describe("NumberCodec", () => {
+      const numberCases: Array<{
+        name: string;
+        value: number;
+        expected: string;
+        assert: (current: number) => void;
+      }> = [
+        {
+          name: "zero",
+          value: 0,
+          expected: "0",
+          assert: (current) => expect(current).toBe(0),
+        },
+        {
+          name: "negative integer",
+          value: -42,
+          expected: "-42",
+          assert: (current) => expect(current).toBe(-42),
+        },
+        {
+          name: "float",
+          value: 3.25,
+          expected: "3.25",
+          assert: (current) => expect(current).toBe(3.25),
+        },
+        {
+          name: "NaN",
+          value: Number.NaN,
+          expected: "NaN",
+          assert: (current) => expect(Number.isNaN(current)).toBe(true),
+        },
+        {
+          name: "Infinity",
+          value: Infinity,
+          expected: "Infinity",
+          assert: (current) => expect(current).toBe(Infinity),
+        },
+        {
+          name: "-Infinity",
+          value: -Infinity,
+          expected: "-Infinity",
+          assert: (current) => expect(current).toBe(-Infinity),
+        },
+      ];
 
-      act(() => {
-        result.current[1](true);
-      });
+      for (const testCase of numberCases) {
+        it(`should handle number ${testCase.name} correctly`, () => {
+          const { result } = renderHook(() =>
+            useStoragePersistedState("num-key", 10),
+          );
 
-      expect(result.current[0]).toBe(true);
-      expect(window.localStorage.getItem("bool-true-key")).toBe("true");
+          act(() => {
+            result.current[1](testCase.value);
+          });
+
+          expect(window.localStorage.getItem("num-key")).toBe(
+            testCase.expected,
+          );
+          testCase.assert(result.current[0]);
+        });
+      }
     });
 
-    const numberCases: Array<{
-      name: string;
-      value: number;
-      expected: string;
-      assert: (current: number) => void;
-    }> = [
-      {
-        name: "zero",
-        value: 0,
-        expected: "0",
-        assert: (current) => expect(current).toBe(0),
-      },
-      {
-        name: "negative integer",
-        value: -42,
-        expected: "-42",
-        assert: (current) => expect(current).toBe(-42),
-      },
-      {
-        name: "float",
-        value: 3.25,
-        expected: "3.25",
-        assert: (current) => expect(current).toBe(3.25),
-      },
-      {
-        name: "NaN",
-        value: Number.NaN,
-        expected: "NaN",
-        assert: (current) => expect(Number.isNaN(current)).toBe(true),
-      },
-      {
-        name: "Infinity",
-        value: Infinity,
-        expected: "Infinity",
-        assert: (current) => expect(current).toBe(Infinity),
-      },
-      {
-        name: "-Infinity",
-        value: -Infinity,
-        expected: "-Infinity",
-        assert: (current) => expect(current).toBe(-Infinity),
-      },
-    ];
+    describe("StringCodec", () => {
+      const stringCases: Array<{
+        name: string;
+        value: string;
+        expected: string;
+      }> = [
+        { name: "empty string", value: "", expected: "" },
+        {
+          name: "normal string",
+          value: "hello world",
+          expected: "hello world",
+        },
+        {
+          name: "special chars",
+          value: "!@#$%^&*()_+-=[]{}|;:'\",.<>/?`~",
+          expected: "!@#$%^&*()_+-=[]{}|;:'\",.<>/?`~",
+        },
+        {
+          name: "unicode",
+          value: "Iñtërnâtiônàlizætiøn こんにちは",
+          expected: "Iñtërnâtiônàlizætiøn こんにちは",
+        },
+        {
+          name: "json string",
+          value: '{"foo":"bar","count":1}',
+          expected: '{"foo":"bar","count":1}',
+        },
+      ];
 
-    for (const testCase of numberCases) {
-      it(`should handle number ${testCase.name} correctly`, () => {
+      for (const testCase of stringCases) {
+        it(`should handle ${testCase.name} correctly`, () => {
+          const { result } = renderHook(() =>
+            useStoragePersistedState("str-key", "default"),
+          );
+
+          act(() => {
+            result.current[1](testCase.value);
+          });
+
+          expect(window.localStorage.getItem("str-key")).toBe(
+            testCase.expected,
+          );
+          expect(result.current[0]).toBe(testCase.value);
+          expect(typeof result.current[0]).toBe("string");
+        });
+      }
+    });
+
+    describe("JsonCodec", () => {
+      it("should serialize complex objects", () => {
+        const defaultValue = { foo: "bar" };
         const { result } = renderHook(() =>
-          useStoragePersistedState("num-key", 10),
+          useStoragePersistedState("obj-key", defaultValue),
+        );
+
+        const newValue = { foo: "baz", val: 123 };
+        act(() => {
+          result.current[1](newValue);
+        });
+
+        expect(result.current[0]).toEqual(newValue);
+        expect(window.localStorage.getItem("obj-key")).toBe(
+          JSON.stringify(newValue),
+        );
+      });
+
+      it("should serialize arrays", () => {
+        const defaultValue: Array<number | string> = [1, 2, 3];
+        const { result } = renderHook(() =>
+          useStoragePersistedState("array-key", defaultValue),
+        );
+
+        const newValue = ["a", "b", "c", 4];
+        act(() => {
+          result.current[1](newValue);
+        });
+
+        expect(result.current[0]).toEqual(newValue);
+        expect(window.localStorage.getItem("array-key")).toBe(
+          JSON.stringify(newValue),
+        );
+      });
+
+      it("should serialize nested objects and arrays", () => {
+        const defaultValue = {
+          id: 1,
+          tags: ["alpha", "beta"],
+          meta: { flags: { active: true }, counts: [1, 2, [3]] },
+        };
+        const { result } = renderHook(() =>
+          useStoragePersistedState("obj-nested-key", defaultValue),
+        );
+
+        const newValue = {
+          id: 2,
+          tags: ["gamma", "delta", "epsilon"],
+          meta: { flags: { active: false }, counts: [3, 2, [1]] },
+        };
+
+        act(() => {
+          result.current[1](newValue);
+        });
+
+        expect(result.current[0]).toEqual(newValue);
+        expect(window.localStorage.getItem("obj-nested-key")).toBe(
+          JSON.stringify(newValue),
+        );
+      });
+
+      it("should not persist explicit null values with JSON codec", () => {
+        const defaultValue = { a: 1 };
+        const { result } = renderHook(() =>
+          useStoragePersistedState<object | null>(
+            "null-key-default",
+            defaultValue,
+          ),
         );
 
         act(() => {
-          result.current[1](testCase.value);
+          result.current[1](null);
         });
 
-        expect(window.localStorage.getItem("num-key")).toBe(testCase.expected);
-        testCase.assert(result.current[0]);
+        // Setting null should remove the key from storage -> default on next read
+        expect(result.current[0]).toEqual(defaultValue);
+        expect(window.localStorage.getItem("null-key-default")).toBeNull();
       });
-    }
 
-    const stringCases: Array<{
-      name: string;
-      value: string;
-      expected: string;
-    }> = [
-      { name: "empty string", value: "", expected: "" },
-      { name: "normal string", value: "hello world", expected: "hello world" },
-      {
-        name: "special chars",
-        value: "!@#$%^&*()_+-=[]{}|;:'\",.<>/?`~",
-        expected: "!@#$%^&*()_+-=[]{}|;:'\",.<>/?`~",
-      },
-      {
-        name: "unicode",
-        value: "Iñtërnâtiônàlizætiøn こんにちは",
-        expected: "Iñtërnâtiônàlizætiøn こんにちは",
-      },
-      {
-        name: "json string",
-        value: '{"foo":"bar","count":1}',
-        expected: '{"foo":"bar","count":1}',
-      },
-    ];
-
-    for (const testCase of stringCases) {
-      it(`should handle ${testCase.name} correctly`, () => {
+      it("should handle undefined with JSON codec", () => {
+        const defaultValue = { a: 1 };
         const { result } = renderHook(() =>
-          useStoragePersistedState("str-key", "default"),
+          useStoragePersistedState<object | undefined>(
+            "undefined-key-default",
+            defaultValue,
+          ),
         );
 
         act(() => {
-          result.current[1](testCase.value);
+          result.current[1](undefined);
         });
 
-        expect(window.localStorage.getItem("str-key")).toBe(testCase.expected);
-        expect(result.current[0]).toBe(testCase.value);
-        expect(typeof result.current[0]).toBe("string");
+        // Setting undefined should remove the key from storage -> default on next read
+        expect(result.current[0]).toEqual(defaultValue);
+        expect(window.localStorage.getItem("undefined-key-default")).toBeNull();
       });
-    }
-
-    it("should serialize complex objects", () => {
-      const defaultValue = { foo: "bar" };
-      const { result } = renderHook(() =>
-        useStoragePersistedState("obj-key", defaultValue),
-      );
-
-      const newValue = { foo: "baz", val: 123 };
-      act(() => {
-        result.current[1](newValue);
-      });
-
-      expect(result.current[0]).toEqual(newValue);
-      expect(window.localStorage.getItem("obj-key")).toBe(
-        JSON.stringify(newValue),
-      );
-    });
-
-    it("should serialize nested objects and arrays", () => {
-      const defaultValue = {
-        id: 1,
-        tags: ["alpha", "beta"],
-        meta: { flags: { active: true }, counts: [1, 2, 3] },
-      };
-      const { result } = renderHook(() =>
-        useStoragePersistedState("obj-nested-key", defaultValue),
-      );
-
-      const newValue = {
-        id: 2,
-        tags: ["gamma", "delta", "epsilon"],
-        meta: { flags: { active: false }, counts: [3, 2, 1] },
-      };
-
-      act(() => {
-        result.current[1](newValue);
-      });
-
-      expect(result.current[0]).toEqual(newValue);
-      expect(window.localStorage.getItem("obj-nested-key")).toBe(
-        JSON.stringify(newValue),
-      );
-    });
-
-    it("should not persist explicit null values with JSON codec", () => {
-      const { result } = renderHook(() =>
-        useStoragePersistedState<object | null>("null-key-default", { a: 1 }),
-      );
-
-      act(() => {
-        result.current[1](null);
-      });
-
-      expect(result.current[0]).toBeNull();
-      expect(window.localStorage.getItem("null-key-default")).toBeNull();
     });
   });
 
@@ -308,6 +380,75 @@ describe("useStoragePersistedState", () => {
       });
 
       expect(result.current[0]).toBe("updated-external");
+      expect(window.localStorage.getItem("sync-key")).toBe("updated-external");
+    });
+
+    it("should return default value if key is deleted in another tab", () => {
+      const defaultValue = { v: "to-be-deleted" };
+      const { result } = renderHook(() =>
+        useStoragePersistedState("delete-key", defaultValue),
+      );
+
+      act(() => {
+        // Simulate foreign storage event deleting the key
+        window.localStorage.removeItem("delete-key");
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "delete-key",
+            newValue: null,
+            storageArea: window.localStorage,
+          }),
+        );
+      });
+
+      expect(result.current[0]).toEqual(defaultValue);
+      expect(window.localStorage.getItem("delete-key")).toBeNull();
+    });
+
+    it("should return default value if key is deleted by another hook", () => {
+      const defaultValue = { v: "to-be-deleted-by-hook" };
+      const { result: hook1 } = renderHook(() =>
+        useStoragePersistedState("delete-hook-key", defaultValue),
+      );
+      const { result: hook2 } = renderHook(() =>
+        useStoragePersistedState("delete-hook-key", defaultValue),
+      );
+
+      act(() => {
+        // Hook 1 deletes the key
+        hook1.current[2]();
+      });
+
+      expect(hook2.current[0]).toEqual(defaultValue);
+      expect(window.localStorage.getItem("delete-hook-key")).toBeNull();
+    });
+
+    it("should handle different default values in two hooks for the same key", () => {
+      const { result: hook1 } = renderHook(() =>
+        useStoragePersistedState("diff-defaults-key", "default-1"),
+      );
+      const { result: hook2 } = renderHook(() =>
+        useStoragePersistedState("diff-defaults-key", "default-2"),
+      );
+
+      // Initially both hooks should read the same default (first one wins)
+      expect(hook1.current[0]).toBe("default-1");
+      expect(hook2.current[0]).toBe("default-2");
+      expect(window.localStorage.getItem("diff-defaults-key")).toBeNull();
+
+      // Hook 2 sets a value
+      act(() => {
+        hook2.current[1]("set-by-hook-2");
+      });
+      expect(hook1.current[0]).toBe("set-by-hook-2");
+      expect(hook2.current[0]).toBe("set-by-hook-2");
+
+      // Hook 1 deletes the key
+      act(() => {
+        hook1.current[2]();
+      });
+      expect(hook1.current[0]).toBe("default-1");
+      expect(hook2.current[0]).toBe("default-2");
     });
 
     it("should sync between two hooks in same tab", () => {

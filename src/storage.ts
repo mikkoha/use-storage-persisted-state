@@ -16,8 +16,10 @@ class StorageSyncManager {
     private pollingIntervalMs = 2000,
   ) {
     if (typeof window !== "undefined") {
-      // 1. Cross-tab sync
-      // TODO: Where/when do we remove this listener? Should we? Comment if not needed.
+      // 1. Cross-tab sync ("storage" event is a built-in browser feature that fires
+      // when localStorage/sessionStorage changes in ANOTHER tab)
+      // We do not remove this listener because this manager is a singleton meant to last
+      // the entire application lifecycle. It is effectively cleaned up when the page unloads.
       window.addEventListener("storage", (e) => {
         if (e.key && this.listeners.has(e.key)) {
           this.notify(e.key);

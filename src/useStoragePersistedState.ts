@@ -21,14 +21,14 @@ export function useStoragePersistedState<T>(
   key: string,
   defaultValue: Exclude<T, null | undefined>,
   options?: Options<T>,
-): [T, (newValue: T | ((prev: T) => T)) => void];
+): [T, (newValue: T | ((prev: T) => T)) => void, () => void];
 
 // Overload 2: Explicit Codec provided, defaultValue can be null or undefined
 export function useStoragePersistedState<T>(
   key: string,
   defaultValue: null | undefined,
   options: Options<T> & { codec: Codec<T> },
-): [T | null, (newValue: T | ((prev: T) => T)) => void];
+): [T | null, (newValue: T | ((prev: T) => T)) => void, () => void];
 
 // Implementation
 export function useStoragePersistedState<T>(
@@ -58,19 +58,26 @@ export function useStoragePersistedState<T>(
 
   // Memoize the decoded value to prevent infinite loops in useSyncExternalStore
   // when the codec returns a new object reference (e.g. JSON.parse).
-  const lastRaw = useRef<string | null>(null);
+  const lastRaw = useRef<string | null>(null); // string | null, because storage returns null for missing keys
   const lastParsed = useRef<T | undefined>(undefined);
 
   const getSnapshot = useCallback(() => {
     const raw = adapter.getItem(key);
 
+    // Return default if storage is missing the key
+    if (raw === null && defaultValue !== undefined) {
+      return defaultValue as T;
+    }
+
     // If raw value matches cache, return cached object.
-    if (raw === lastRaw.current && lastParsed.current !== undefined)
+    if (raw === lastRaw.current) {
+      if (lastParsed.current === undefined) {
+        return null as T;
+      }
       return lastParsed.current as T;
+    }
 
-    // If key is missing, return default.
-    if (raw === null) return defaultValue as T;
-
+    // Decode new raw value
     try {
       const decoded = codec.decode(raw);
 
@@ -96,18 +103,16 @@ export function useStoragePersistedState<T>(
   const setValue = useCallback(
     (newValueOrFn: T | ((prev: T) => T)) => {
       try {
-        const raw = adapter.getItem(key);
-        // We can reuse getSnapshot logic or just decode again.
-        // Decoding is safer to be fresh, but we can optimistically use value?
-        // Let's stick to reading from storage to be safe (concurrent updates).
-        const current = raw !== null ? codec.decode(raw) : defaultValue;
+        const currentRaw = adapter.getItem(key);
+        const current =
+          currentRaw !== null ? codec.decode(currentRaw) : defaultValue;
 
         const newValue =
           newValueOrFn instanceof Function
             ? newValueOrFn(current)
             : newValueOrFn;
 
-        if (newValue === undefined) {
+        if (newValue === undefined || newValue === null) {
           lastRaw.current = null;
           lastParsed.current = undefined;
           adapter.removeItem(key);
@@ -116,7 +121,7 @@ export function useStoragePersistedState<T>(
           lastRaw.current = encoded;
           lastParsed.current = newValue;
 
-          if (encoded === null) {
+          if (encoded === null || encoded === undefined) {
             adapter.removeItem(key);
           } else {
             adapter.setItem(key, encoded);
@@ -132,5 +137,16 @@ export function useStoragePersistedState<T>(
     [adapter, key, codec, defaultValue, syncManager],
   );
 
-  return [value, setValue] as const;
+  const removeItem = useCallback(() => {
+    try {
+      lastRaw.current = null;
+      lastParsed.current = undefined;
+      adapter.removeItem(key);
+      syncManager.notify(key);
+    } catch (error) {
+      console.error(`Error removing localStorage key "${key}":`, error);
+    }
+  }, [adapter, key, syncManager]);
+
+  return [value, setValue, removeItem] as const;
 }
