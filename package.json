@@ -1,7 +1,7 @@
 {
   "name": "use-storage-persisted-state",
   "version": "1.0.0",
-  "description": "A robust, type-safe React hook for persisting state in localStorage/sessionStorage with cross-tab sync",
+  "description": "A robust, type-safe React hook for persisting state in localStorage/sessionStorage with cross-component and cross-tab sync",
   "license": "MIT",
   "author": "Mikko Haapanen <mikko.h@iki.fi>",
   "keywords": [
@@ -50,7 +50,8 @@
     "check": "npm run typecheck && npm run lint",
     "format": "prettier --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "npm run check && npm run test && npm run build"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

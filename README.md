@@ -233,3 +233,18 @@ Key differences include:
 ### How does the hook handle null and undefined values?
 
 When the state is set to `null` or `undefined`, the hook will remove the corresponding item from the underlying storage (`localStorage`/`sessionStorage`). This means that subsequent reads will return the `defaultValue` provided to the hook until an explicit value is set.
+
+## Publishing
+
+Follow this checklist to publish a new version.
+
+### One-time setup
+
+- Ensure you have npm access to the package: `npm whoami` and `npm owner ls use-storage-persisted-state`.
+
+### Release checklist
+
+1. Bump the version: `npm version patch|minor|major` (this creates a git tag).
+2. Run release checks and build the package:`npm run prepublishOnly`
+3. Verify the tarball contents: `npm pack --dry-run`
+4. Publish: `npm publish`
