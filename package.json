@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "A robust, type-safe React hook for persisting state in localStorage/sessionStorage with cross-tab sync",
   "license": "MIT",
-  "author": "",
+  "author": "Mikko Haapanen <mikko.h@iki.fi>",
   "keywords": [
     "react",
     "hooks",
@@ -18,12 +18,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/mikkoha/use-storage-persisted-state"
   },
   "bugs": {
-    "url": ""
+    "url": "https://github.com/mikkoha/use-storage-persisted-state/issues"
   },
-  "homepage": "",
+  "homepage": "https://github.com/mikkoha/use-storage-persisted-state#readme",
   "type": "commonjs",
   "sideEffects": false,
   "main": "./dist/index.js",

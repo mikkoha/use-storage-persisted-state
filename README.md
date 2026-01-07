@@ -228,6 +228,7 @@ Key differences include:
 - full TypeScript type inference and safety
 - SSR ready with proper hydration using `useSyncExternalStore` (with React 16.8+ support via shim)
 - handles edge-cases like `QuotaExceededError`, and other storage unavailability
+- provides read/write utilities for use where hooks cannot be used, while maintaining sync and serialization
 
 ### How does the hook handle null and undefined values?
 
