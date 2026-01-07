@@ -383,6 +383,63 @@ describe("useStoragePersistedState", () => {
       expect(window.localStorage.getItem("sync-key")).toBe("updated-external");
     });
 
+    it("should ignore storage events when cross-tab sync is disabled", () => {
+      const { result } = renderHook(() =>
+        useStoragePersistedState("sync-disabled-key", "initial", {
+          crossTabSync: false,
+          pollingIntervalMs: null,
+        }),
+      );
+
+      act(() => {
+        window.localStorage.setItem("sync-disabled-key", "updated-external");
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "sync-disabled-key",
+            newValue: "updated-external",
+            storageArea: window.localStorage,
+          }),
+        );
+      });
+
+      expect(result.current[0]).toBe("initial");
+      expect(window.localStorage.getItem("sync-disabled-key")).toBe(
+        "updated-external",
+      );
+    });
+
+    it("should only update hooks with cross-tab sync enabled when options differ", () => {
+      const { result: enabled } = renderHook(() =>
+        useStoragePersistedState("mixed-sync-key", "enabled-default", {
+          crossTabSync: true,
+          pollingIntervalMs: null,
+        }),
+      );
+      const { result: disabled } = renderHook(() =>
+        useStoragePersistedState("mixed-sync-key", "disabled-default", {
+          crossTabSync: false,
+          pollingIntervalMs: null,
+        }),
+      );
+
+      act(() => {
+        window.localStorage.setItem("mixed-sync-key", "updated-external");
+        window.dispatchEvent(
+          new StorageEvent("storage", {
+            key: "mixed-sync-key",
+            newValue: "updated-external",
+            storageArea: window.localStorage,
+          }),
+        );
+      });
+
+      expect(enabled.current[0]).toBe("updated-external");
+      expect(disabled.current[0]).toBe("disabled-default");
+      expect(window.localStorage.getItem("mixed-sync-key")).toBe(
+        "updated-external",
+      );
+    });
+
     it("should return default value if key is deleted in another tab", () => {
       const defaultValue = { v: "to-be-deleted" };
       const { result } = renderHook(() =>
@@ -516,6 +573,183 @@ describe("useStoragePersistedState", () => {
       expect(result.current[0]).toBe("silent-change");
 
       vi.useRealTimers();
+    });
+
+    it("should use a custom polling interval", () => {
+      vi.useFakeTimers();
+
+      const { result } = renderHook(() =>
+        useStoragePersistedState("polling-custom-key", "initial", {
+          pollingIntervalMs: 500,
+        }),
+      );
+
+      window.localStorage.setItem("polling-custom-key", "custom-change");
+
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(result.current[0]).toBe("initial");
+
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      expect(result.current[0]).toBe("custom-change");
+    });
+
+    it("should use the shortest polling interval for the same key", () => {
+      vi.useFakeTimers();
+
+      const { result: slowHook } = renderHook(() =>
+        useStoragePersistedState("polling-shared-key", "initial", {
+          pollingIntervalMs: 1000,
+        }),
+      );
+      const { result: fastHook } = renderHook(() =>
+        useStoragePersistedState("polling-shared-key", "initial", {
+          pollingIntervalMs: 200,
+        }),
+      );
+
+      window.localStorage.setItem("polling-shared-key", "updated");
+
+      act(() => {
+        vi.advanceTimersByTime(150);
+      });
+      expect(slowHook.current[0]).toBe("initial");
+      expect(fastHook.current[0]).toBe("initial");
+
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      expect(slowHook.current[0]).toBe("updated");
+      expect(fastHook.current[0]).toBe("updated");
+    });
+
+    it("should not notify hooks with polling disabled when another hook enables polling", () => {
+      vi.useFakeTimers();
+
+      const { result: pollingDisabled } = renderHook(() =>
+        useStoragePersistedState("polling-mixed-key", "initial", {
+          pollingIntervalMs: null,
+        }),
+      );
+      const { result: pollingEnabled } = renderHook(() =>
+        useStoragePersistedState("polling-mixed-key", "initial", {
+          pollingIntervalMs: 200,
+        }),
+      );
+
+      window.localStorage.setItem("polling-mixed-key", "updated");
+
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+
+      expect(pollingEnabled.current[0]).toBe("updated");
+      expect(pollingDisabled.current[0]).toBe("initial");
+    });
+
+    it("should start and stop polling as hooks mount and unmount", () => {
+      vi.useFakeTimers();
+      const setIntervalSpy = vi.spyOn(window, "setInterval");
+      const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+
+      const { unmount, rerender } = renderHook(
+        ({ enabled }: { enabled: boolean }) =>
+          useStoragePersistedState("polling-lifecycle-key", "initial", {
+            pollingIntervalMs: enabled ? 200 : null,
+          }),
+        { initialProps: { enabled: true } },
+      );
+
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        rerender({ enabled: false });
+      });
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(1);
+
+      act(() => {
+        rerender({ enabled: true });
+      });
+      expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+
+      unmount();
+      expect(clearIntervalSpy).toHaveBeenCalledTimes(2);
+    });
+
+    it("should not start polling when polling is disabled", () => {
+      vi.useFakeTimers();
+      const setIntervalSpy = vi.spyOn(window, "setInterval");
+
+      renderHook(() =>
+        useStoragePersistedState("polling-disabled-only-key", "initial", {
+          pollingIntervalMs: null,
+        }),
+      );
+
+      expect(setIntervalSpy).not.toHaveBeenCalled();
+    });
+
+    it("should reuse a single interval and update it when the shortest unmounts", () => {
+      vi.useFakeTimers();
+      const setIntervalSpy = vi.spyOn(window, "setInterval");
+      const clearIntervalSpy = vi.spyOn(window, "clearInterval");
+
+      const { unmount: unmountFast } = renderHook(() =>
+        useStoragePersistedState("polling-interval-reuse-key", "initial", {
+          pollingIntervalMs: 200,
+        }),
+      );
+      const { result: slowResult, unmount: unmountSlow } = renderHook(() =>
+        useStoragePersistedState("polling-interval-reuse-key", "initial", {
+          pollingIntervalMs: 1000,
+        }),
+      );
+
+      expect(setIntervalSpy).toHaveBeenCalledTimes(1);
+      expect(clearIntervalSpy).not.toHaveBeenCalled();
+
+      act(() => {
+        unmountFast();
+      });
+
+      expect(clearIntervalSpy.mock.calls.length).toBeGreaterThanOrEqual(1);
+      expect(setIntervalSpy).toHaveBeenCalledTimes(2);
+
+      window.localStorage.setItem("polling-interval-reuse-key", "updated");
+
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(slowResult.current[0]).toBe("initial");
+
+      act(() => {
+        vi.advanceTimersByTime(800);
+      });
+      expect(slowResult.current[0]).toBe("updated");
+
+      unmountSlow();
+      expect(clearIntervalSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("should allow disabling polling", () => {
+      vi.useFakeTimers();
+
+      const { result } = renderHook(() =>
+        useStoragePersistedState("polling-disabled-key", "initial", {
+          pollingIntervalMs: null,
+        }),
+      );
+
+      window.localStorage.setItem("polling-disabled-key", "silent-change");
+
+      act(() => {
+        vi.advanceTimersByTime(2500);
+      });
+
+      expect(result.current[0]).toBe("initial");
     });
   });
 

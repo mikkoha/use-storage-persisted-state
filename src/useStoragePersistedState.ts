@@ -10,10 +10,24 @@ type StorageType = "localStorage" | "sessionStorage";
  */
 interface Options<T> {
   /**
-   * Explicit codec for complex types or when defaultValue is null.
+   * Explicit codec for when defaultValue is null or undefined, for complex types, or special cases (e.g., data migration on read).
+   * If not provided, codec is inferred from defaultValue type.
    */
   codec?: Codec<T>;
+  /**
+   * Storage type to use: 'localStorage' (default) or 'sessionStorage'.
+   */
   storageType?: StorageType;
+  /**
+   * Enable cross-tab synchronization via the StorageEvent. Note: disabling this will not stop other tabs from updating localStorage, but this hook will not automatically respond to those changes.
+   * defaults to true.
+   */
+  crossTabSync?: boolean;
+  /**
+   * Polling interval in milliseconds for detecting storage changes made outside of React (e.g., DevTools, direct localStorage manipulation). Set to null to disable polling.
+   * defaults to 2000ms.
+   */
+  pollingIntervalMs?: number | null;
 }
 
 // Overload 1: Default provided, T inferred
@@ -94,7 +108,11 @@ export function useStoragePersistedState<T>(
   // useSyncExternalStore handles the hydration mismatch automatically by
   // taking a `getServerSnapshot` (returning defaultValue).
   const value = useSyncExternalStore(
-    (callback) => syncManager.subscribe(key, callback),
+    (callback) =>
+      syncManager.subscribe(key, callback, {
+        crossTabSync: options.crossTabSync,
+        pollingIntervalMs: options.pollingIntervalMs,
+      }),
     getSnapshot,
     () => defaultValue as T, // Server Snapshot
   );
