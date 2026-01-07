@@ -20,7 +20,8 @@ export interface Codec<T> {
  * );
  * ```
  */
-export const JsonCodec: Codec<unknown> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const JsonCodec: Codec<any> = {
   encode: (value) => {
     if (value === null) return null;
     return JSON.stringify(value);
