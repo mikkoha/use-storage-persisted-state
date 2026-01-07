@@ -1,9 +1,13 @@
 import { useCallback, useMemo, useRef } from "react";
 import { useSyncExternalStore } from "use-sync-external-store/shim";
 import { Codec, inferCodec } from "./codecs";
-import { localStorageSync, sessionStorageSync } from "./storage";
+import {
+  localStorageSync,
+  memoryStorageSync,
+  sessionStorageSync,
+} from "./storage";
 
-type StorageType = "localStorage" | "sessionStorage";
+type StorageType = "localStorage" | "sessionStorage" | "memory";
 
 /**
  * Options for the useStoragePersistedState hook
@@ -15,7 +19,7 @@ interface Options<T> {
    */
   codec?: Codec<T>;
   /**
-   * Storage type to use: 'localStorage' (default) or 'sessionStorage'.
+   * Storage type to use: 'localStorage' (default), 'sessionStorage', or 'memory'.
    */
   storageType?: StorageType;
   /**
@@ -53,7 +57,9 @@ export function useStoragePersistedState<T>(
   const syncManager =
     options.storageType === "sessionStorage"
       ? sessionStorageSync
-      : localStorageSync;
+      : options.storageType === "memory"
+        ? memoryStorageSync
+        : localStorageSync;
   const adapter = syncManager.storage;
 
   // 1. Determine the codec.

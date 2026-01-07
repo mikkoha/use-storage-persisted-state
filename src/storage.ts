@@ -17,17 +17,74 @@ interface ListenerOptions {
   pollingIntervalMs: number | null;
 }
 
+interface StorageSyncManagerOptions {
+  enableCrossTabSync?: boolean;
+  enablePolling?: boolean;
+}
+
+class MemoryStorageAdapter implements StorageAdapter {
+  private store = new Map<string, string>();
+
+  getItem(key: string) {
+    return this.store.has(key) ? this.store.get(key)! : null;
+  }
+
+  setItem(key: string, value: string) {
+    this.store.set(key, value);
+  }
+
+  removeItem(key: string) {
+    this.store.delete(key);
+  }
+}
+
+class FallbackStorageAdapter implements StorageAdapter {
+  constructor(
+    private primary: StorageAdapter,
+    private fallback: StorageAdapter,
+  ) {}
+
+  getItem(key: string) {
+    const fallbackValue = this.fallback.getItem(key);
+    if (fallbackValue !== null) return fallbackValue;
+    return this.primary.getItem(key);
+  }
+
+  setItem(key: string, value: string) {
+    try {
+      this.primary.setItem(key, value);
+      this.fallback.removeItem(key);
+    } catch {
+      this.fallback.setItem(key, value);
+    }
+  }
+
+  removeItem(key: string) {
+    try {
+      this.primary.removeItem(key);
+    } finally {
+      this.fallback.removeItem(key);
+    }
+  }
+}
+
 // Singleton manager ensures we only have ONE listener per key globally
 class StorageSyncManager {
   private listeners = new Map<string, Map<() => void, ListenerOptions>>();
   private pollingIntervalId: number | null = null;
   private pollingIntervalMsActive: number | null = null;
+  private enableCrossTabSync: boolean;
+  private enablePolling: boolean;
 
   constructor(
     public readonly storage: StorageAdapter,
     private defaultPollingIntervalMs = 2000,
+    options: StorageSyncManagerOptions = {},
   ) {
-    if (typeof window !== "undefined") {
+    this.enableCrossTabSync = options.enableCrossTabSync ?? true;
+    this.enablePolling = options.enablePolling ?? true;
+
+    if (typeof window !== "undefined" && this.enableCrossTabSync) {
       // 1. Cross-tab sync ("storage" event is a built-in browser feature that fires
       // when localStorage/sessionStorage changes in ANOTHER tab)
       // We do not remove this listener because this manager is a singleton meant to last
@@ -47,10 +104,10 @@ class StorageSyncManager {
       this.listeners.set(key, new Map());
     }
     const listenerOptions: ListenerOptions = {
-      crossTabSync: options.crossTabSync ?? true,
-      pollingIntervalMs: this.normalizePollingInterval(
-        options.pollingIntervalMs,
-      ),
+      crossTabSync: this.enableCrossTabSync && (options.crossTabSync ?? true),
+      pollingIntervalMs: this.enablePolling
+        ? this.normalizePollingInterval(options.pollingIntervalMs)
+        : null,
     };
     this.listeners.get(key)!.set(callback, listenerOptions);
 
@@ -119,6 +176,7 @@ class StorageSyncManager {
 
   private updatePollingInterval() {
     if (typeof window === "undefined") return;
+    if (!this.enablePolling) return;
 
     const nextInterval = this.getMinPollingIntervalMs();
     if (nextInterval === null) {
@@ -162,5 +220,17 @@ class StorageSyncManager {
   }
 }
 
-export const localStorageSync = new StorageSyncManager(window.localStorage);
-export const sessionStorageSync = new StorageSyncManager(window.sessionStorage);
+const localStorageFallback = new MemoryStorageAdapter();
+const sessionStorageFallback = new MemoryStorageAdapter();
+
+export const localStorageSync = new StorageSyncManager(
+  new FallbackStorageAdapter(window.localStorage, localStorageFallback),
+);
+export const sessionStorageSync = new StorageSyncManager(
+  new FallbackStorageAdapter(window.sessionStorage, sessionStorageFallback),
+);
+export const memoryStorageSync = new StorageSyncManager(
+  new MemoryStorageAdapter(),
+  2000,
+  { enableCrossTabSync: false, enablePolling: false },
+);
