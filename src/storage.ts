@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * Interface allows swapping LocalStorage for SessionStorage or Async Storage later
  */
