@@ -114,6 +114,31 @@ By default, the codec is inferred from the type of `defaultValue` if possible.
 - If `defaultValue` is an object or array, a built-in `JsonCodec` is used by default.
 - There is nothing magical about codecs; they are just objects with `encode` (e.g., `JSON.stringify`) and `decode` (e.g., `JSON.parse`) methods. You can provide your own codec for custom serialization logic.
 
+### 4. Read and write outside React
+
+You can read and write values without using the hook. These utilities still parse via codecs and notify active hooks using the same key. You can, of course, also use window.localStorage/sessionStorage directly, but then you have to handle serialization and hook notifications yourself (if you're not using polling or want immediate updates).
+
+```tsx
+import {
+  readStoragePersistedState,
+  setStoragePersistedState,
+  JsonCodec,
+} from "use-storage-persisted-state";
+
+// Read a number value with inferred NumberCodec.
+const count = readStoragePersistedState("count", 0);
+
+// Explicit codec is required since the default value is null.
+const user = readStoragePersistedState<{ name: string } | null>(
+  "user_profile",
+  null,
+  { codec: JsonCodec },
+);
+
+// Write an object value with inferred JsonCodec.
+setStoragePersistedState("user_profile", { name: "Alice" });
+```
+
 ## Advanced usage
 
 ### Data schema migration with custom codec

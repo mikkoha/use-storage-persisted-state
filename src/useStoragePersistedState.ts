@@ -9,12 +9,12 @@ import {
   sessionStorageSync,
 } from "./storage";
 
-type StorageType = "localStorage" | "sessionStorage" | "memory";
+export type StorageType = "localStorage" | "sessionStorage" | "memory";
 
 /**
  * Options for the useStoragePersistedState hook
  */
-interface Options<T> {
+export interface StoragePersistedStateOptions<T> {
   /**
    * Explicit codec for when defaultValue is null or undefined, for complex types, or special cases (e.g., data migration on read).
    * If not provided, codec is inferred from defaultValue type.
@@ -40,21 +40,21 @@ interface Options<T> {
 export function useStoragePersistedState<T>(
   key: string,
   defaultValue: Exclude<T, null | undefined>,
-  options?: Options<T>,
+  options?: StoragePersistedStateOptions<T>,
 ): [T, (newValue: T | ((prev: T) => T)) => void, () => void];
 
 // Overload 2: Explicit Codec provided, defaultValue can be null or undefined
 export function useStoragePersistedState<T>(
   key: string,
   defaultValue: null | undefined,
-  options: Options<T> & { codec: Codec<T> },
+  options: StoragePersistedStateOptions<T> & { codec: Codec<T> },
 ): [T | null, (newValue: T | ((prev: T) => T)) => void, () => void];
 
 // Implementation
 export function useStoragePersistedState<T>(
   key: string,
   defaultValue: T,
-  options: Options<T> = {},
+  options: StoragePersistedStateOptions<T> = {},
 ) {
   const syncManager =
     options.storageType === "sessionStorage"

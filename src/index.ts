@@ -1,4 +1,8 @@
 export { useStoragePersistedState } from "./useStoragePersistedState";
+export type {
+  StoragePersistedStateOptions,
+  StorageType,
+} from "./useStoragePersistedState";
 export type { Codec } from "./codecs";
 export {
   JsonCodec,
@@ -7,3 +11,7 @@ export {
   NumberCodec,
   inferCodec,
 } from "./codecs";
+export {
+  readStoragePersistedState,
+  setStoragePersistedState,
+} from "./storagePersistedState";
