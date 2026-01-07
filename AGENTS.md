@@ -35,3 +35,15 @@ Agents should not build or publish the project, unless explicitly assigned.
    npm run format
    ```
    Ensure all commands pass before considering the task complete.
+
+## Testing conventions:
+
+- **File structure**: Tests are co-located with source or in `src`. Split large test suites into multiple files by feature/topic.
+  - Pattern: `[filename].[topic].test.tsx`
+  - Example: `useStoragePersistedState.basic.test.tsx`, `useStoragePersistedState.sync.test.tsx`
+- **Describe blocks**:
+  - Top-level: Name of the unit (function/component/class) being tested.
+  - Second-level (optional, can be used to further organize tests): Feature area or scenario corresponding to the file topic (e.g. "Basic functionality", "Synchronization").
+- **It blocks**:
+  - Start with "should".
+  - Describe the expected behavior clearly.
