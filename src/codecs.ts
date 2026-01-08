@@ -19,6 +19,7 @@ export interface Codec<T> {
  *   { codec: JsonCodec }
  * );
  * ```
+ * any type is needed to allow objects and arrays of any shape.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const JsonCodec: Codec<any> = {
@@ -45,10 +46,27 @@ export const JsonCodec: Codec<any> = {
  * const [name, setName] = useStoragePersistedState("name", "Guest");
  * // Automatically uses StringCodec because defaultValue is a string
  * ```
+ *
+ * any type is needed to allow string enums.
  */
-export const StringCodec: Codec<string | null> = {
-  encode: (value) => value ?? null,
-  decode: (value) => value ?? null,
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const StringCodec: Codec<any> = {
+  encode: (value) => {
+    if (value == null) return null;
+    if (typeof value === "string") return value;
+    console.error(
+      `StringCodec encode expected a string but got ${typeof value}.`,
+    );
+    return String(value);
+  },
+  decode: (value) => {
+    if (value == null) return null;
+    if (typeof value === "string") return value;
+    console.error(
+      `StringCodec decode expected a string but got ${typeof value}.`,
+    );
+    return String(value);
+  },
 };
 
 /**
@@ -74,20 +92,38 @@ export const BooleanCodec: Codec<boolean> = {
  * const [count, setCount] = useStoragePersistedState("count", 0);
  * // Automatically uses NumberCodec because defaultValue is a number
  * ```
+ *
+ * any type is needed to allow number enums.
  */
-export const NumberCodec: Codec<number | null> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const NumberCodec: Codec<any> = {
   encode: (value) => {
     if (value === null) return null;
+    if (typeof value !== "number") {
+      console.error(
+        `NumberCodec encode expected a number but got ${typeof value}.`,
+      );
+    }
     return String(value);
   },
   decode: (value) => {
-    if (value === null || value === "") return null;
+    if (value === null) return null;
     // Handle special numeric values
     if (value === "NaN") return NaN;
     if (value === "Infinity") return Infinity;
     if (value === "-Infinity") return -Infinity;
+    if (value === "") {
+      console.warn("NumberCodec decode received an empty string.");
+      return null;
+    }
     const parsed = Number(value);
-    return isNaN(parsed) ? null : parsed;
+    if (Number.isNaN(parsed)) {
+      console.warn(
+        `NumberCodec decode received an invalid number string "${value}".`,
+      );
+      return null;
+    }
+    return parsed;
   },
 };
 

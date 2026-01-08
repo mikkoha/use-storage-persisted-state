@@ -48,12 +48,12 @@ describe("storagePersistedState", () => {
   });
 
   it("should support functional updates", () => {
-    setStoragePersistedState("counter-key", (prev) => (prev ?? 0) + 1, {
+    setStoragePersistedState<number>("counter-key", (prev) => (prev ?? 0) + 1, {
       codec: NumberCodec,
     });
     const value = readStoragePersistedState("counter-key", 0);
     expect(value).toBe(1);
-    setStoragePersistedState("counter-key", (prev) => (prev ?? 0) + 1, {
+    setStoragePersistedState<number>("counter-key", (prev) => (prev ?? 0) + 1, {
       codec: NumberCodec,
     });
     const value2 = readStoragePersistedState("counter-key", 0);
