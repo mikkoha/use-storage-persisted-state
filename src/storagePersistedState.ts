@@ -39,7 +39,7 @@ function resolveCodec<T>(
  *
  * Returns the provided defaultValue when the key is missing or parsing fails.
  */
-export function readStoragePersistedState<T>(
+export function getStoragePersistedState<T>(
   key: string,
   defaultValue: Exclude<T, null | undefined>,
   options?: StoragePersistedStateOptions<T>,
@@ -51,13 +51,13 @@ export function readStoragePersistedState<T>(
  *
  * Use this overload when defaultValue is null or undefined.
  */
-export function readStoragePersistedState<T>(
+export function getStoragePersistedState<T>(
   key: string,
   defaultValue: null | undefined,
   options: StoragePersistedStateOptions<T> & { codec: Codec<T> },
 ): T | null;
 
-export function readStoragePersistedState<T>(
+export function getStoragePersistedState<T>(
   key: string,
   defaultValue: T,
   options: StoragePersistedStateOptions<T> = {},
@@ -145,5 +145,25 @@ export function setStoragePersistedState<T>(
     syncManager.notify(key);
   } catch (error) {
     console.error(`Error setting storage key "${key}":`, error);
+  }
+}
+
+/**
+ * Remove a persisted value from storage and notify active hooks for the same key.
+ *
+ * Defaults to localStorage when no storageType is provided.
+ */
+export function removeStoragePersistedState(
+  key: string,
+  storageType?: StorageType,
+) {
+  const syncManager = getSyncManager(storageType);
+  const adapter = syncManager.storage;
+
+  try {
+    adapter.removeItem(key);
+    syncManager.notify(key);
+  } catch (error) {
+    console.error(`Error removing storage key "${key}":`, error);
   }
 }

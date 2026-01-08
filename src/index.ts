@@ -12,6 +12,8 @@ export {
   inferCodec,
 } from "./codecs";
 export {
-  readStoragePersistedState,
+  getStoragePersistedState,
+  getStoragePersistedState as readStoragePersistedState,
   setStoragePersistedState,
+  removeStoragePersistedState,
 } from "./storagePersistedState";
