@@ -258,4 +258,4 @@ Follow this checklist to publish a new version.
 2. Push the changes and tag: `git push && git push --tags`
 3. Run release checks and build the package:`npm run prepublishOnly`
 4. Verify the tarball contents: `npm pack --dry-run`
-5. Publish: `npm publish`
+5. Publish: `npm publish` (might need `npm login` first).
