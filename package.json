@@ -1,6 +1,6 @@
 {
   "name": "use-storage-persisted-state",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A robust, type-safe React hook for persisting state in localStorage/sessionStorage with cross-component and cross-tab sync",
   "license": "MIT",
   "author": "Mikko Haapanen <mikko.h@iki.fi>",
