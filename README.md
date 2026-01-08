@@ -1,5 +1,11 @@
 # use-storage-persisted-state
 
+[![npm version](https://img.shields.io/npm/v/use-storage-persisted-state)](https://www.npmjs.com/package/use-storage-persisted-state)
+[![types](https://img.shields.io/npm/types/use-storage-persisted-state)](https://www.npmjs.com/package/use-storage-persisted-state)
+[![license](https://img.shields.io/npm/l/use-storage-persisted-state)](LICENSE)
+[![bundle size](https://img.shields.io/bundlephobia/min/use-storage-persisted-state)](https://bundlephobia.com/package/use-storage-persisted-state)
+[![bundle size (gzip)](https://img.shields.io/bundlephobia/minzip/use-storage-persisted-state)](https://bundlephobia.com/package/use-storage-persisted-state)
+
 A robust, type-safe React hook for persisting state backed by `localStorage`, `sessionStorage`, or memory.
 
 `useStoragePersistedState` works like `useState`, but it automatically persists your state to the browser and keeps it synchronized across all components, tabs, and even direct localStorage changes, or manual changes in DevTools.
@@ -139,6 +145,10 @@ const user = readStoragePersistedState<{ name: string } | null>(
 setStoragePersistedState("user_profile", { name: "Alice" });
 ```
 
+### More examples
+
+More type-checked usage examples live in `examples/`-folder.
+
 ## Advanced usage
 
 ### Data schema migration with custom codec
@@ -245,6 +255,7 @@ Follow this checklist to publish a new version.
 ### Release checklist
 
 1. Bump the version: `npm version patch|minor|major` (this creates a git tag).
-2. Run release checks and build the package:`npm run prepublishOnly`
-3. Verify the tarball contents: `npm pack --dry-run`
-4. Publish: `npm publish`
+2. Push the changes and tag: `git push && git push --tags`
+3. Run release checks and build the package:`npm run prepublishOnly`
+4. Verify the tarball contents: `npm pack --dry-run`
+5. Publish: `npm publish`
