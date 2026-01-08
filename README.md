@@ -259,3 +259,9 @@ Follow this checklist to publish a new version.
 3. Run release checks and build the package:`npm run prepublishOnly`
 4. Verify the tarball contents: `npm pack --dry-run`
 5. Publish: `npm publish` (might need `npm login` first).
+
+## TODO
+
+- [ ] Better type inference for null/undefined default value cases.
+- [ ] Global config
+- [ ] Polling should be disabled by default?
