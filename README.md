@@ -222,10 +222,13 @@ function Settings() {
 
 Using JSON for everything works, but it has some downsides:
 
-- Primitive strings are not handled by `JSON.stringify` as cleanly as one might expect.
-  - `"hello"` becomes `""hello""` in storage (note the literal quotes).
+- All primitive values are not handled by `JSON.stringify` and `JSON.parse` as cleanly as one might expect in this context.
+  - `hello` (string) becomes `"hello"` in storage (note the literal quotes).
+  - Parsing a string value that looks like JSON (e.g., `{"name":"Alice"}`) will return an object, not the original string.
+  - Parsing a string without literal quotes (e.g., `hello`) will throw a syntax error.
+  - `number`: Special values like `NaN`, `Infinity`, and `-Infinity` are not preserved. They all become `null`.
 
-- This can lead to confusion and bugs, especially if localStorage is accessed directly or by other libraries or debugged via DevTools. Or, if the project already uses localStorage before adding this hook. Or, if you want to remove the hook later but keep using the stored data.
+- This can lead to confusion and bugs, especially if localStorage is accessed directly or by other libraries or debugged via DevTools. Or, if the project already uses localStorage before adding this hook. Or, if you want to remove, or prepare for the possibility of removing, the hook later but keep using the stored data.
 
 ### How is `QuotaExceededError` handled?
 
