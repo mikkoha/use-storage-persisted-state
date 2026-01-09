@@ -218,6 +218,15 @@ function Settings() {
 
 ## FAQ
 
+### Why the Codecs? Why not just use JSON for everything?
+
+Using JSON for everything works, but it has some downsides:
+
+- Primitive strings are not handled by `JSON.stringify` as cleanly as one might expect.
+  - `"hello"` becomes `""hello""` in storage (note the literal quotes).
+
+- This can lead to confusion and bugs, especially if localStorage is accessed directly or by other libraries or debugged via DevTools. Or, if the project already uses localStorage before adding this hook. Or, if you want to remove the hook later but keep using the stored data.
+
 ### How is `QuotaExceededError` handled?
 
 If `localStorage` or `sessionStorage` is full, writing to it will typically throw a `QuotaExceededError`. This library handles this gracefully by catching the error and automatically falling back to an in-memory storage for that specific key. This means your application won't crash, and the state will persist for the session (until page reload), even if it couldn't be persisted.
@@ -262,6 +271,8 @@ Follow this checklist to publish a new version.
 
 ## TODO
 
-- [ ] Better type inference for null/undefined default value cases.
+- [ ] Better type inference for null/undefined default value cases. Could we get rid of the explicit codec requirement in these cases?
+- [ ] Does the name "coded" make the serializer/deserializer concept sound too complicated? Should rename to "serializer" or similar?
 - [ ] Global config
 - [ ] Polling should be disabled by default?
+- [ ] null vs undefined in return value. Should/could we return undefined instead of null when the user defined type is T | undefined? (Currently the returned value is in this case T | undefined | null, but undefined is never actually returned.)
