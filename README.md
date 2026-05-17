@@ -10,6 +10,8 @@ A robust, type-safe React hook for persisting state backed by `localStorage`, `s
 
 `useStoragePersistedState` works like `useState`, but it automatically persists your state to the browser and keeps it synchronized across all components, tabs, and even direct localStorage changes, or manual changes in DevTools.
 
+For the background and motivation behind this package, see [React localStorage backed state: easy to start, hard to get right](https://mikkohaapanen.com/tech-blog/persisting-react-state-localstorage/).
+
 ## Features (Why another storage hook?)
 
 - **Type safety**: Full TypeScript type inference and safety.
